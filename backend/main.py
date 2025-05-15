@@ -16,7 +16,7 @@ from PIL import Image
 import io
 from bs4 import BeautifulSoup
 import re
-from tensorflow.keras.preprocessing.text import Tokenizer
+import pickle
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import base64
 
@@ -32,15 +32,17 @@ app.add_middleware(
 )
 
 # Constants for text processing
-MAX_WORDS = 10000  # Adjust based on your training
-MAX_LEN = 1000     # Adjust based on your training
+MAX_WORDS = 5000
+MAX_LEN = 128
 
-# Load models
+# Load models and tokenizer
 try:
     cnn_model = tf.keras.models.load_model('ResNet50_defaced_clf.h5')
     lstm_model = tf.keras.models.load_model('BiLSTM.h5')
+    with open("tokenizer.pickle", "rb") as handle:
+        tokenizer = pickle.load(handle)
 except Exception as e:
-    print(f"Error loading models: {e}")
+    print(f"Error loading models or tokenizer: {e}")
 
 class WebsiteInput(BaseModel):
     url: str
@@ -58,7 +60,6 @@ def setup_selenium():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=1920,1080")
-
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
@@ -80,14 +81,12 @@ def capture_screenshot(url: str):
     try:
         if not url.startswith("http"):
             url = "http://" + url
-
         driver.get(url)
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         screenshot = driver.get_screenshot_as_png()
         html_content = driver.page_source
         extracted_text = extract_text_from_html(html_content)
         return screenshot, extracted_text
-
     except (TimeoutException, WebDriverException) as e:
         raise HTTPException(status_code=500, detail=f"Error processing website: {str(e)}")
     finally:
@@ -101,21 +100,10 @@ def preprocess_image(screenshot):
     return img_array
 
 def preprocess_text(text):
-    tokenizer = Tokenizer(
-        num_words=MAX_WORDS,
-        oov_token='<OOV>',
-        lower=True,
-        filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n',
-        split=' '
-    )
-
     if isinstance(text, str):
         text = [text]
-
-    tokenizer.fit_on_texts(text)
     sequences = tokenizer.texts_to_sequences(text)
     padded_sequences = pad_sequences(sequences, maxlen=MAX_LEN, padding='post', truncating='post')
-
     return padded_sequences
 
 @app.get("/")
@@ -144,7 +132,6 @@ async def analyze_website(website: WebsiteInput):
             "confidence": float(final_pred),
             "screenshot_base64": screenshot_base64
         }
-
     except Exception as e:
         import traceback
         traceback.print_exc()

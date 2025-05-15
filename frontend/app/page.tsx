@@ -61,6 +61,7 @@ export default function Home() {
 
           {screenshot && (
             <div className="mt-4">
+              <strong>Ảnh chụp màn hình:</strong>
               <img src={screenshot} alt="Ảnh chụp màn hình" className="rounded shadow" />
             </div>
           )}
