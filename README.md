@@ -46,11 +46,10 @@ npm run dev
 ```
 
 ## Usage
-1. Backend will be available at: http://localhost:3000
-2. Frontend will be available at: http://localhost:3001
-3. Open the frontend URL in your browser
-4. Enter a website URL to analyze
-5. View the defacement detection results
+1. Frontend will be available at: http://localhost:3001
+2. Open the frontend URL in your browser
+3. Enter a website URL to analyze
+4. View the defacement detection results
 
 ## API Endpoints
 - POST `/analyze`: Analyze a website for defacement
