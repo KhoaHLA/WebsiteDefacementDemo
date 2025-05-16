@@ -37,9 +37,9 @@ MAX_LEN = 128
 
 # Load models and tokenizer
 try:
-    cnn_model = tf.keras.models.load_model('ResNet50_defaced_clf.h5')
-    lstm_model = tf.keras.models.load_model('BiLSTM.h5')
-    with open("tokenizer.pickle", "rb") as handle:
+    cnn_model = tf.keras.models.load_model('models/ResNet50_defaced_clf.h5')
+    lstm_model = tf.keras.models.load_model('models/BiLSTM.h5')
+    with open("models/tokenizer.pickle", "rb") as handle:
         tokenizer = pickle.load(handle)
 except Exception as e:
     print(f"Error loading models or tokenizer: {e}")
@@ -48,6 +48,7 @@ class WebsiteInput(BaseModel):
     url: str
 
 def extract_text_from_html(html_content):
+    
     soup = BeautifulSoup(html_content, 'html.parser')
     for script in soup(["script", "style"]):
         script.decompose()
@@ -106,10 +107,6 @@ def preprocess_text(text):
     padded_sequences = pad_sequences(sequences, maxlen=MAX_LEN, padding='post', truncating='post')
     return padded_sequences
 
-@app.get("/")
-def read_root():
-    return {"message": "Website Defacement Classification API"}
-
 @app.post("/analyze")
 async def analyze_website(website: WebsiteInput):
     try:
@@ -136,3 +133,4 @@ async def analyze_website(website: WebsiteInput):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+    
