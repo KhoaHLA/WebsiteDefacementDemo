@@ -1,7 +1,6 @@
 # Website Defacement Detection
 
-A web application that detects website defacement using machine learning models.
-
+This is a demo web application of Website Defacement Detection. This is the main part of our project: Website Defacement Detection Using Deep Learning - IE105 
 ## Project Structure
 ```
 project/
@@ -30,7 +29,7 @@ pip install -r requirements.txt
 
 3. Run the backend server:
 ```bash
-uvicorn main:app --reload --port 3000
+uvicorn main:app --reload --host localhost  --port 8080
 ```
 
 ### Frontend Setup
@@ -46,10 +45,11 @@ npm run dev
 ```
 
 ## Usage
-1. Frontend will be available at: http://localhost:3001
-2. Open the frontend URL in your browser
-3. Enter a website URL to analyze
-4. View the defacement detection results
+1. Frontend will be available at: http://localhost:3000
+2. Backend Swagger API Docs will be available at http://localhost:8000/docs
+3. Open the frontend URL in your browser
+4. Enter a website URL to analyze
+5. View the defacement detection results
 
 ## API Endpoints
 - POST `/analyze`: Analyze a website for defacement
