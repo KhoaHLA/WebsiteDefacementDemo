@@ -46,7 +46,7 @@ npm run dev
 
 ## Usage
 1. Frontend will be available at: http://localhost:3000
-2. Backend Swagger API Docs will be availabke at http://localhost:8000/docs
+2. Backend Swagger API Docs will be available at http://localhost:8000/docs
 3. Open the frontend URL in your browser
 4. Enter a website URL to analyze
 5. View the defacement detection results
