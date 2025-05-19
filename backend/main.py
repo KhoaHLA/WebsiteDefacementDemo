@@ -23,12 +23,13 @@ from connect_dtb import conn, get_connection
 from typing import List
 from fastapi.responses import JSONResponse
 from fastapi import Query
+import pydobc
 app = FastAPI()
 
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development, use ["http://localhost:3000"] in production
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -73,7 +74,7 @@ def process_url(driver, url, screenshot_path):
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         driver.save_screenshot(screenshot_path)
         print(f"Screenshot saved to {screenshot_path}")
-        html_content = driver.page_source
+        html_content = driver.page_source  
         extracted_text = extract_text_from_html(html_content)
         return extracted_text
     except (TimeoutException, WebDriverException) as e:
