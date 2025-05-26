@@ -23,7 +23,6 @@ from connect_dtb import conn, get_connection
 from typing import List
 from fastapi.responses import JSONResponse
 from fastapi import Query
-import pydobc
 app = FastAPI()
 
 # Enable CORS
