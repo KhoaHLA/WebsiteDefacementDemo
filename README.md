@@ -4,8 +4,7 @@ This is a demo web application of Website Defacement Detection. This is the main
 ## Project Structure
 ```
 project/
-├── backend/         # FastAPI backend
-├── frontend/        # Next.js frontend
+├── backend/         # FastAPI backend        
 └── README.md
 ```
 
