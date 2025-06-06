@@ -1,8 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
-import os
+from typing import Optional
 import numpy as np
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -19,8 +18,7 @@ import re
 import pickle
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import base64
-from connect_dtb import conn, get_connection
-from typing import List
+from connect_dtb import get_connection
 from fastapi.responses import JSONResponse
 from fastapi import Query
 app = FastAPI()
@@ -139,8 +137,8 @@ async def analyze_website(website: WebsiteInput):
 
 class DefaceItem(BaseModel):
     link_url: str
-    image_url: str | None = None
-    confidence: float   
+    image_url: Optional[str] = None
+    confidence: float
 
 @app.post("/create")
 def create_deface(item: DefaceItem):
@@ -149,16 +147,19 @@ def create_deface(item: DefaceItem):
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO deface (link_url, image_url, confidence)
-            VALUES (?, ?, ?)
-        """, item.link_url, item.image_url, item.confidence)
+            VALUES (%s, %s, %s)
+        """, (item.link_url, item.image_url, item.confidence))
         conn.commit()
-        return {"message": "Them du lieu thanh cong"}
+        return {"message": "Thêm dữ liệu thành công"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
     
 @app.get("/all")
 def get_all_deface():
     try:
+        conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT id, link_url, image_url, confidence, created_date FROM deface")
         rows = cursor.fetchall()
@@ -166,15 +167,14 @@ def get_all_deface():
         result = []
         for row in rows:
             result.append({
-                "id": row.id,
-                "link_url": row.link_url,
-                "image_url": row.image_url,
-                "confidence": row.confidence,
-                "created_date": row.created_date.strftime('%Y-%m-%d %H:%M:%S') if row.created_date else None
+                "id": str(row["id"]),
+                "link_url": row["link_url"],
+                "image_url": row["image_url"],
+                "confidence": row["confidence"],
+                "created_date": row["created_date"].strftime('%Y-%m-%d %H:%M:%S') if row["created_date"] else None
             })
 
         return JSONResponse(content=result)
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -185,14 +185,14 @@ def get_monthly_stats(year: int = Query(..., description="Year to fetch stats fo
         cursor = conn.cursor()
         cursor.execute("""
             SELECT
-                MONTH(created_date) AS month,
+                EXTRACT(MONTH FROM created_date)::int AS month,
                 SUM(CASE WHEN confidence >= 0.5 THEN 1 ELSE 0 END) AS defaced,
                 SUM(CASE WHEN confidence < 0.5 THEN 1 ELSE 0 END) AS cleaned
             FROM deface
-            WHERE YEAR(created_date) = ?
-            GROUP BY MONTH(created_date)
+            WHERE EXTRACT(YEAR FROM created_date) = %s
+            GROUP BY month
             ORDER BY month;
-        """, year)
+        """, (year,))
         rows = cursor.fetchall()
 
         result = {
@@ -201,64 +201,57 @@ def get_monthly_stats(year: int = Query(..., description="Year to fetch stats fo
         }
 
         for row in rows:
-            month_index = row.month - 1  # tháng 1 là index 0
-            result["defaced"][month_index] = row.defaced
-            result["cleaned"][month_index] = row.cleaned
+            index = row["month"] - 1
+            result["defaced"][index] = row["defaced"]
+            result["cleaned"][index] = row["cleaned"]
 
         return JSONResponse(content=result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
     
 @app.get("/growth-rate")
 def get_growth_rate(year: int = Query(..., description="Năm hiện tại")):
     try:
         conn = get_connection()
         cursor = conn.cursor()
-
-        # Đếm số lượng dòng cho năm hiện tại và năm trước
         cursor.execute("""
             SELECT
-                SUM(CASE WHEN YEAR(created_date) = ? THEN 1 ELSE 0 END) AS current_year,
-                SUM(CASE WHEN YEAR(created_date) = ? THEN 1 ELSE 0 END) AS last_year
+                SUM(CASE WHEN EXTRACT(YEAR FROM created_date) = %s THEN 1 ELSE 0 END) AS current_year,
+                SUM(CASE WHEN EXTRACT(YEAR FROM created_date) = %s THEN 1 ELSE 0 END) AS last_year
             FROM deface
-        """, year, year - 1)
-
+        """, (year, year - 1))
         row = cursor.fetchone()
-        current = row.current_year or 0
-        last = row.last_year or 0
+        current = row["current_year"] or 0
+        last = row["last_year"] or 0
 
-        # Tính phần trăm tăng/giảm
         if last == 0:
             percent_change = 100.0 if current > 0 else 0.0
         else:
             percent_change = ((current - last) / last) * 100
 
         return JSONResponse(content={"percent_change": round(percent_change, 2)})
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
     
 @app.get("/count-by-year")
 def get_counts_by_year(year: int = Query(..., description="Năm cần thống kê")):
     try:
         conn = get_connection()
         cursor = conn.cursor()
-
         cursor.execute("""
             SELECT
                 SUM(CASE WHEN confidence >= 0.5 THEN 1 ELSE 0 END) AS defaced_count,
                 SUM(CASE WHEN confidence < 0.5 THEN 1 ELSE 0 END) AS cleaned_count
             FROM deface
-            WHERE YEAR(created_date) = ?
-        """, year)
-
+            WHERE EXTRACT(YEAR FROM created_date) = %s
+        """, (year,))
         row = cursor.fetchone()
-
         return JSONResponse(content={
             "year": year,
-            "defaced": row.defaced_count or 0,
-            "cleaned": row.cleaned_count or 0
+            "defaced": row["defaced_count"] or 0,
+            "cleaned": row["cleaned_count"] or 0
         })
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
